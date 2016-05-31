@@ -1,1 +1,91 @@
-Hello World
+# Building Ember Smart Banner Addon
+
+----
+## Introduction
+
+
+> Addons take isolated code and package it so that it can be shared between applications.  I create an addon called ember-smart-banner` which provides a simple configurable Smart Banner that can be used in your Ember.js application. In the following post, I will detail the steps I took to create my addon, 'ember-smart-banner', along with the things I learned along the way.
+
+----
+# 1. Generate the addon
+
+Generating an addon from the command line is simple with ember-cli installed.  Ember-cli supports node 0.12.x and npm 2.7.x and 3.x.  To install ember-cli you can type `npm install -g ember-cli` in the command line.  Once installed, type `ember -v` into your command line, and you should see the ember-cli version
+(>= 2.3.0) and the node and npm versions.
+
+### Create the addon
+`ember addon ember-smart-banner`
+
+That command will create for you an ember addon called ember-smart-banner.  Type the command and ember-cli will create a directory structure and some config files for you as well as the npm and bower packages. This directory includes tests and a dummy app which I will talk about later.
+
+`cd ember-smart-banner`
+
+`ember server`
+
+These commands will move you into your addon’s folder and then start the server. Go to localhost:4200
+and you should see “Welcome to Ember.js” and the title of 'Dummy' in the browser tool bar.  Type `ctrl-c` to abort the app.
+
+The test infrastructure includes a "dummy" app, that can be used to test your addon as will as preview it. The dummy app proved invaluable for building the banner as well as viewing how it would be displayed. It is also useful for testing logically scenarios before writing integration tests.
+
+### Generate the components/tests
+
+`ember generate component smart-banner`
+
+Type that into the command line and you will get a new ember component called "smart-banner".  You should see the following.
+
+    installing component
+      create addon/components/smart-banner.js
+      create addon/templates/components/smart-banner.hbs
+    installing component-test
+      create tests/integration/components/smart-banner-test.js
+    installing component-addon
+      create app/components/smart-banner.js
+
+If you forget any of the commands  you can add the `--help flag` to the end of each command. `ember generate —help` will display how to generate the file structure you are looking for.
+Generating the component creates both the component and the template in the ‘addon’ directory. In order to make the component extensible, the component is placed in the addon directory and imported into the app directory.  Therefore, we will build the component in the addon directory.
+
+### Build the component
+
+    *<!-- in addon/components/smart-banner.js -->*
+    import Ember from 'ember';
+    import layout from '../templates/components/smart-banner';
+
+    export default Ember.Component.extend({
+      layout,
+      classNames: ['ember-smart-banner'],
+
+      title: computed.or('titleIOS', 'titleAndroid', 'config.title', 'bannerDefaults.title'),
+      description: computed.or('descriptionIOS', 'descriptionAndroid'),
+      linkText: computed.or('linkTextIOS', 'linkTextAndroid'),
+      iconUrl: null,
+      showBanner: computed.and('bannerOpen', 'supportsOS', 'afterCloseBool', 'afterVisitBool'), // Set showBanner to true to always show
+      link: computed.or('displayAppStoreLink', 'displayMarketLink'),
+
+      userAgent: computed(function() {
+        return (navigator.userAgent || navigator.vendor || window.opera);
+      }),
+
+      supportsOS: computed.or('supportsIOS', 'supportsAndroid'),
+      supportsIOS: computed.and('iOS', 'appIdIOS'),
+      supportsAndroid: computed.and('android', 'appIdAndroid'),
+
+      iOS: computed('userAgent', function() {
+        const userAgent = this.get('userAgent');
+        return (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i));
+      }),
+
+      android: computed('userAgent', function() {
+        const userAgent = this.get('userAgent');
+        return (userAgent.match(/Android/i));
+      }),
+
+    });
+
+Here is roughly how I began my application.  I started with the parameters that I wanted to be configurable.  I wanted a title, description, and linkText to render based of which Operating System was detected in the browser.
+
+### Build tests and finish component
+
+I used the dummy app to quickly see if everything was working.  My process was to create integration tests, build the component, and then create more integration tests. As the app grew in complexity, the tests proved invaluable to preventing previously tested functionality from breaking. The breaking tests provided quick feedback, guiding me towards solutions.  Integration testing lets you render your component in a an isolated template      and test individual functionality. I was able to test the rendered state of a component in isolation from the rest of the app.
+
+
+An overarching theme of creating an addon is to figure out what to include and what not to include.  Although it may be better to keep the addon minimal, and not include stylesheets, I chose to include stylesheets in order to allow for minimal setup. These stylesheets are still able to overwritten in the project.
+I chose to put the CSS Style sheets in the vendor folder and import the them the index.js included(). I did this for convenience, but there may be a more effective way. I initially tried to put it in `addon/styles/app.css`, but I ran into some trouble. For more on this issue, see https://github.com/ember-cli/ember-cli/issues/2258.
